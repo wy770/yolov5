@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时课堂行为检测</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            /*width: 1000px;*/
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px; /* 减少内边距 */
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%; /* 修改宽度为90% */
+            max-width: 1200px; /* 可选的最大宽度 */
+            height: 90%; /* 修改高度为90% */
+            max-height: 100vh; /* 可选的最大高度 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px; /* 增大字体 */
+        }
+        #behavior-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 10px; /* 减少上边距 */
+            flex-grow: 1;
+        }
+        #behavior {
+            margin-top: 10px; /* 减少上边距 */
+            font-size: 18px; /* 减小字体 */
+            color: #333;
+        }
+        video {
+            display: none;
+        }
+        .error {
+            color: red;
+            font-size: 16px; /* 减小字体 */
+            margin-top: 10px; /* 减少上边距 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>实时课堂行为检测</h1>
+        <video id="video" autoplay></video>
+        <img id="behavior-image" src="" alt="Behavior Image">
+        <div id="behavior">行为结果：<span id="behaviorResult"></span></div>
+        <div id="error-message" class="error"></div>
+    </div>
+    <script>
+        const behaviorImage = document.getElementById('behavior-image');
+        const behaviorResult = document.getElementById('behaviorResult');
+        const video = document.getElementById('video');
+        const errorMessage = document.getElementById('error-message');
+
+        function getUserMediaSupported() {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+
+        if (getUserMediaSupported()) {
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })  // 设置较低的分辨率
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.play();
+
+                    video.addEventListener('loadeddata', () => {
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = 640;  // 设置更低的分辨率
+                        canvas.height = 480;
+
+                        setInterval(() => {
+                            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            // 获取图像数据并发送
+                            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.5); // 使用0.5的图像质量
+                            fetch('/api/behavior-detection', {
+                                method: 'POST',
+                                body: JSON.stringify({ image: imageDataUrl }),
+                                headers: { 'Content-Type': 'application/json' }
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('网络请求错误');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                const results = data.results;
+                                const image = data.image;
+
+                                if (results.length > 0) {
+                                    behaviorImage.src = image;
+                                    behaviorResult.textContent = results.map(result => result.label).join(', ');
+                                } else {
+                                    behaviorResult.textContent = '未检测到行为';
+                                }
+                            })
+                            .catch(error => {
+                                errorMessage.textContent = `Fetch Error: ${error.message}`;
+                                console.error('Fetch Error:', error);
+                            });
+                        }, 500);  // 每0.5秒发送一次请求
+                    });
+
+                })
+                .catch(err => {
+                    errorMessage.textContent = `访问摄像头失败: ${err.message}`;
+                    console.error('访问摄像头失败:', err);
+                });
+        } else {
+            errorMessage.textContent = '当前浏览器不支持 getUserMedia API';
+            console.error('当前浏览器不支持 getUserMedia API');
+        }
+    </script>
+</body>
+</html>

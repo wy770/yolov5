@@ -1,0 +1,22 @@
+# Custom data for safety helmet
+# train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
+train: ./data/dataset/images/train
+val: ./data/dataset/images/val
+
+
+nc: 6
+
+# class names  0            1     2          3                 4                   5
+names: ['hand-raising','reading','writing','normal','bowing the head','leaning over the table']
+
+
+# 0 hand-raising -> 举手
+# 1 reading -> 阅读
+# 2 writing -> 写作
+# 3 using phone -> 使用手机
+# 4 bowing the head -> 低头
+# 5 leaning over the table -> 趴在桌子上
+
+
+
+
